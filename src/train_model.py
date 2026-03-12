@@ -1,44 +1,52 @@
 import pandas as pd
+import joblib
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
-from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, precision_score, recall_score
-import joblib
-import sys
-sys.path.append('src')
+from sklearn.metrics import roc_auc_score
+
+# Import our custom functions from data_processing.py
 from data_processing import load_data, optimize_memory, preprocess
 
-df = load_data('data/heart_failure_clinical_records_dataset.xls')
-df = optimize_memory(df)
-X_train, X_test, y_train, y_test = preprocess(df)
+def train_and_select_best_model():
+    # 1. Load and prepare the data
+    print("Loading and optimizing data...")
+    df = load_data('../data/heart_failure_clinical_records_dataset.csv')
+    df = optimize_memory(df)
+    
+    print("\nPreprocessing data (Splitting and applying SMOTE)...")
+    X_train, X_test, y_train, y_test = preprocess(df)
 
-models = {
-    'Random Forest': RandomForestClassifier(random_state=42),
-    'XGBoost': XGBClassifier(random_state=42),
-    'LightGBM': LGBMClassifier(random_state=42),
-    'Logistic Regression': LogisticRegression(random_state=42, max_iter=1000)
-}
+    # 2. Initialize the models required by the project
+    models = {
+        'Random Forest': RandomForestClassifier(random_state=42),
+        'XGBoost': XGBClassifier(random_state=42, eval_metric='logloss'),
+        'LightGBM': LGBMClassifier(random_state=42),
+        'Logistic Regression': LogisticRegression(random_state=42, max_iter=1000)
+    }
 
-best_score = 0
-best_model = None
-best_name = ''
+    best_score = 0
+    best_model = None
+    best_name = ""
 
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    auc = roc_auc_score(y_test, model.predict_proba(X_test)[:,1])
-    acc = accuracy_score(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred)
-    recall = recall_score(y_test, y_pred)
-    print(f"{name}: AUC={auc:.3f} | Accuracy={acc:.3f} | F1={f1:.3f} | Precision={precision:.3f} | Recall={recall:.3f}")
+    # 3. Train each model and find the best one using ROC-AUC
+    print("\nTraining models...")
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        
+        # We use predict_proba for ROC-AUC to get probability scores
+        y_proba = model.predict_proba(X_test)[:, 1]
+        auc = roc_auc_score(y_test, y_proba)
+        print(f"Trained {name} - Validation AUC: {auc:.4f}")
 
-    if auc > best_score:
-        best_score = auc
-        best_model = model
-        best_name = name
+        # Keep track of the best model
+        if auc > best_score:
+            best_score = auc
+            best_model = model
+            best_name = name
 
-joblib.dump(best_model, 'src/best_model.pkl')
-print(f"\nMeilleur modèle : {best_name} (AUC={best_score:.3f})")
-print("Modèle sauvegardé !")
+    
+
+if _name_ == "_main_":
+    train_and_select_best_model()
