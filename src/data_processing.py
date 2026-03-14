@@ -3,7 +3,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.model_selection import train_test_split
 
 def load_data(filepath):
-    df = pd.read_excel(filepath)
+    df = pd.read_csv(filepath)
     return df
 
 def optimize_memory(df):
