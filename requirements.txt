@@ -1,0 +1,10 @@
+git rm src/__pycache__/data_processing.cpython-311.pycpandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+imbalanced-learn
+streamlit
+shap
+matplotlib
+pytest
