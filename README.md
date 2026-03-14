@@ -243,15 +243,18 @@ Tests in `tests/test_data_processing.py` — run automatically via GitHub Action
 ---
 
 ## 👥 Team
-AAzizi Hajar
-STITOU Amal
+Azizi Hajar
+Stitou Amal
 Tayyeb Idriss
-ZERZBANE Khawla
-ZHIRI Ahmed
+Zerzbane khaoula
+Zhiri Ahmed
 
 ## 👥 Supervising teacher
-ZERHOUNI Kawtar 
-
+Dr.Zerhouni Kawtar 
+Dr.Nassih Rym
+Pr.Hermann Agossou
+Pr.Kourouma Nouhan
+Pr.Mehdi Soufiane
 ## 👥 Expression of gratitude.
 We are eternally grateful to M.NASSIH Rim for her support and help during this week, she helped us a lot, thank you.
 
