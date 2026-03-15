@@ -1,4 +1,4 @@
-git rm src/__pycache__/data_processing.cpython-311.pycpandas
+git 
 pandas
 numpy
 scikit-learn
