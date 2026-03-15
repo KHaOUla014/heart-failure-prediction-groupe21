@@ -493,14 +493,13 @@ AI tools (Claude, ChatGPT) were extremely helpful but never 100% ready to use. K
 
 ## 👥 Team
 
-| Name | Role |
-|---|---|
-| Azizi Hajar | Data preprocessing & EDA |
-| Stitou Amal | Model training & evaluation |
-| Tayyeb Idriss | SHAP explainability & interface |
-| Zerzbane Khaoula | Testing & CI/CD |
-| Zhiri Ahmed | Project management & documentation |
-
+| Name 
+|---
+| Azizi Hajar 
+| Stitou Amal 
+| Tayyeb Idriss 
+| Zerzbane Khaoula 
+| Zhiri Ahmed 
 ## 🎓 Supervising Teachers
 
 Dr. Zerhouni Kawtar · Dr. Nassih Rym · Pr. Hermann Agossou · Pr. Kourouma Nouhan · Pr. Mehdi Soufiane
