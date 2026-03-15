@@ -119,7 +119,7 @@ def optimize_memory(df):
             df[col] = df[col].astype('int32')
 ```
 
-> 📌 **Result:** Memory reduced from 37.84 KB to 17.62 KB — a **53.4% reduction** with no loss of information.
+> 📌 **Result:** Memory reduced from 31.228 KB to 15.68 KB — a **49.8% reduction** with no loss of information.
 
 ```python
 def preprocess(df):
