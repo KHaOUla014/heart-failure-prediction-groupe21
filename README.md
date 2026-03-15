@@ -333,17 +333,7 @@ pytest tests/ -v
 ```bash
 docker build -t heart-failure-app .
 docker run -p 8501:8501 heart-failure-app
-```🟦 Confusion Matrices
-Each matrix shows the model's classification results on the held-out test set (20% of 299 patients).
-Rows represent the actual class, columns represent the predicted class.
-0 = Survived · 1 = Deceased
-
-⚕️ Clinical focus: The bottom-left cell (actual Deceased, predicted Survived) represents false negatives — the most dangerous type of error in a medical context.
-
-<div align="center">
-Logistic RegressionRandom Forest<img src="reports/confusion_matrix_logistic_regression.png" width="340"/><img src="reports/confusion_matrix_random_forest.png" width="340"/>
-LightGBMXGBoost ✅ (Best Model)<img src="reports/confusion_matrix_lightgbm.png" width="340"/><img src="reports/confusion_matrix_xgboost.png" width="340"/>
-</div>
+```
 
 ---
 
