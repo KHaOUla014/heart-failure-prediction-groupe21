@@ -4,18 +4,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.model_selection import train_test_split
 
 def load_data(filepath):
-    """
-    Loads the dataset from either CSV or Excel format.
-    Automatically detects the file type.
-    """
-    if filepath.endswith('.csv'):
-        df = pd.read_csv(filepath)
-    elif filepath.endswith(('.xls', '.xlsx')):
-        df = pd.read_excel(filepath, engine='xlrd')
-    else:
-        raise ValueError(f"Unsupported file format: {filepath}")
-    
-    print(f"Dataset loaded: {df.shape[0]} rows, {df.shape[1]} columns")
+    df = pd.read_csv(filepath)
     return df
 
 def optimize_memory(df):
