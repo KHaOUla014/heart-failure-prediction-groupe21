@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="assets/logo.png" width="130"/>
+<img src="assets/logo.png" width="1000"/>
 
-# 🫀 Heart Failure Risk Predictor
+#  Heart Failure Risk Predictor
 
 **Explainable Machine Learning for Clinical Decision Support**
 
