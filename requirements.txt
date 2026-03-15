@@ -1,4 +1,5 @@
 git rm src/__pycache__/data_processing.cpython-311.pycpandas
+pandas
 numpy
 scikit-learn
 xgboost
@@ -8,3 +9,6 @@ streamlit
 shap
 matplotlib
 pytest
+openpyxl
+xlrd
+joblib
