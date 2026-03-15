@@ -59,7 +59,6 @@ This project is an advanced **clinical decision-support tool** that helps physic
 heart-failure-project/
 ├── data/
 │   ├── heart_failure_clinical_records_dataset.csv   # UCI clinical records dataset
-│   └── heart_failure_clinical_records_dataset.xls   # Excel version for model training
 ├── notebooks/
 │   └── eda.ipynb                   # Exploratory data analysis
 ├── src/
@@ -120,7 +119,7 @@ def optimize_memory(df):
             df[col] = df[col].astype('int32')
 ```
 
-> 📌 **Result:** Memory reduced from 37.84 KB to 17.62 KB — a **53.4% reduction** with no loss of information.
+> 📌 **Result:** Memory reduced from 31.228 KB to 15.68 KB — a **49.8% reduction** with no loss of information.
 
 ```python
 def preprocess(df):
@@ -494,14 +493,13 @@ AI tools (Claude, ChatGPT) were extremely helpful but never 100% ready to use. K
 
 ## 👥 Team
 
-| Name | Role |
-|---|---|
-| Azizi Hajar | Data preprocessing & EDA |
-| Stitou Amal | Model training & evaluation |
-| Tayyeb Idriss | SHAP explainability & interface |
-| Zerzbane Khaoula | Testing & CI/CD |
-| Zhiri Ahmed | Project management & documentation |
-
+| Name 
+|---
+| Azizi Hajar 
+| Stitou Amal 
+| Tayyeb Idriss 
+| Zerzbane Khaoula 
+| Zhiri Ahmed 
 ## 🎓 Supervising Teachers
 
 Dr. Zerhouni Kawtar · Dr. Nassih Rym · Pr. Hermann Agossou · Pr. Kourouma Nouhan · Pr. Mehdi Soufiane
