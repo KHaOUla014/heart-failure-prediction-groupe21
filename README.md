@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.png" width="1000"/>
+<img src="assets/logo.jpg" width="1000"/>
 
 #  Heart Failure Risk Predictor
 
