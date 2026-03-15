@@ -142,22 +142,50 @@ def evaluate_all_models():
     print("Results saved to reports/model_comparison.csv ✅")
 
     # ─────────────────────────────────────
-    # ROC CURVE — ALL MODELS ON ONE CHART
+    # ROC CURVES — ALL MODELS + INDIVIDUAL
     # ─────────────────────────────────────
     print("\nGenerating ROC curves...")
-    fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Retrain to plot all on same chart
+    # Count models for subplot layout
+    n_models = len(models)
+    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+
+    # ── TOP ROW: All models on one chart ──
+    ax_all = axes[0, 0]
+    ax_all.set_title('All Models — ROC Comparison', fontweight='bold')
+
     for name, model in models.items():
-        model.fit(X_train, y_train)
         y_proba = model.predict_proba(X_test)[:, 1]
-        RocCurveDisplay.from_predictions(y_test, y_proba, ax=ax, name=name)
+        RocCurveDisplay.from_predictions(y_test, y_proba, ax=ax_all, name=name)
 
-    ax.set_title('ROC Curves — All Models')
-    ax.plot([0,1],[0,1],'k--', label='Random baseline')
-    ax.legend(loc='lower right')
+    ax_all.plot([0,1],[0,1],'k--', label='Random baseline')
+    ax_all.legend(loc='lower right', fontsize=8)
+
+    # Hide the unused subplot in top row
+    axes[0, 1].set_visible(False)
+    axes[0, 2].set_visible(False)
+
+    # ── BOTTOM ROW: Individual model ROC curves ──
+    model_list = list(models.items())
+    individual_axes = [axes[1, 0], axes[1, 1], axes[1, 2], axes[0, 1]]
+
+    # Unhide axes[0,1] for 4th model
+    axes[0, 1].set_visible(True)
+
+    for i, (name, model) in enumerate(model_list):
+        ax = individual_axes[i]
+        y_proba = model.predict_proba(X_test)[:, 1]
+        auc = roc_auc_score(y_test, y_proba)
+        RocCurveDisplay.from_predictions(y_test, y_proba, ax=ax, name=name)
+        ax.plot([0,1],[0,1],'k--')
+        ax.set_title(f'{name}\n(AUC = {auc:.4f})', fontweight='bold', fontsize=10)
+        ax.legend().remove()
+
+    plt.suptitle('ROC Curve Analysis — Heart Failure Prediction', 
+                fontsize=14, fontweight='bold', y=1.02)
     plt.tight_layout()
-    plt.savefig('reports/roc_curves_all_models.png')
+    plt.savefig('reports/roc_curves_all_models.png', 
+                bbox_inches='tight', dpi=150)
     plt.clf()
     print("ROC curves saved to reports/roc_curves_all_models.png ✅")
 
@@ -165,20 +193,32 @@ def evaluate_all_models():
     # SHAP SUMMARY — BEST MODEL
     # ─────────────────────────────────────
     print("\nGenerating SHAP summary plot...")
-    explainer   = shap.TreeExplainer(best_model)
-    shap_values = explainer.shap_values(X_test)
+    import numpy as np
 
-    plt.figure(figsize=(10, 6))
-    if isinstance(shap_values, list):
-        shap.summary_plot(shap_values[1], X_test, show=False)
-    else:
-        shap.summary_plot(shap_values, X_test, show=False)
+    # Use basic Explainer instead of TreeExplainer
+    # This bypasses the interaction values problem completely
+    explainer = shap.Explainer(best_model.predict_proba, X_train)
+    shap_values = explainer(X_test)
 
-    plt.title(f'SHAP Summary — {best_name}')
+    # shap_values[:, :, 1] = class 1 (died)
+    vals = shap_values[:, :, 1].values
+
+    importance_df = pd.DataFrame({
+        'feature': X_test.columns.tolist(),
+        'importance': np.abs(vals).mean(axis=0)
+    }).sort_values('importance', ascending=True)
+
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.barh(importance_df['feature'], importance_df['importance'],
+            color='#e74c3c', edgecolor='#c0392b')
+    ax.set_xlabel('Mean |SHAP value| (average impact on prediction)')
+    ax.set_title(f'SHAP Feature Importance — {best_name}', pad=15, fontsize=13)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     plt.tight_layout()
-    plt.savefig('reports/shap_summary_plot.png')
+    plt.savefig('reports/shap_summary_plot.png', bbox_inches='tight', dpi=150)
     plt.clf()
-    print("SHAP summary saved to reports/shap_summary_plot.png ✅")
+    print("SHAP plot saved ✅")
 
     return {
         'best_model': best_model,
