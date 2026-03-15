@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://archive.ics.uci.edu/dataset/519/heart+failure+clinical+records"><img src="https://img.shields.io/badge/Dataset-UCI%20ML%20Repository-blue?style=flat-square" /></a>
-  <a href="#"><img src="https://img.shields.io/badge/Python-3.10%2B-green?style=flat-square&logo=python" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/Python-3.11%2B-green?style=flat-square&logo=python" /></a>
   <a href="#"><img src="https://img.shields.io/badge/Framework-Streamlit-red?style=flat-square&logo=streamlit" /></a>
   <a href="#"><img src="https://img.shields.io/badge/XAI-SHAP-orange?style=flat-square" /></a>
   <a href="#"><img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-black?style=flat-square&logo=github" /></a>
@@ -32,7 +32,7 @@
 |---|---|
 | 2026-03-09 | 🔍 Project comprehension and task distribution among team members |
 | 2026-03-09 | 🌐 GitHub onboarding — exploring the environment and setting up the repository |
-| 2026-03-10 | 📊 EDA complete — class imbalance handled with SMOTE; XGBoost selected as best model |
+| 2026-03-10 | 📊 EDA complete — class imbalance handled with SMOTE; Random Forest selected as best model |
 | 2026-03-14 | ⚙️ CI/CD pipeline live on GitHub Actions — automated testing on every push |
 | 2026-03-15 | 🎉 Project delivered — full pipeline with SHAP explainability and Streamlit UI |
 
@@ -40,16 +40,16 @@
 
 ## 📖 Overview
 
-This project is an advanced **clinical decision-support tool** that helps physicians predict the risk of death from heart failure using patient clinical records. It combines state-of-the-art gradient-boosted classifiers with **SHAP (SHapley Additive exPlanations)** to provide transparent, interpretable predictions at the patient level.
+This project is an advanced **clinical decision-support tool** that helps physicians predict the risk of death from heart failure using patient clinical records. It combines state-of-the-art ensemble classifiers with **SHAP (SHapley Additive exPlanations)** to provide transparent, interpretable predictions at the patient level.
 
 | Feature | Detail |
 |---|---|
 | 📦 Dataset | 299 patients · 12 clinical features · binary target |
 | 🤖 Models | Random Forest · XGBoost · LightGBM · Logistic Regression |
-| 🏆 Best Model | **XGBoost** (ROC-AUC ~0.92) |
+| 🏆 Best Model | **Random Forest** (ROC-AUC = 0.8992) |
 | 🔍 Explainability | SHAP summary & per-patient waterfall charts |
 | 🖥️ Interface | Streamlit web application |
-| ⚙️ CI/CD | GitHub Actions (auto-train + pytest on every push) |
+| ⚙️ CI/CD | GitHub Actions (pytest on every push) |
 
 ---
 
@@ -58,22 +58,26 @@ This project is an advanced **clinical decision-support tool** that helps physic
 ```
 heart-failure-project/
 ├── data/
-│   ├── heart_failure_clinical_records_dataset.csv   # UCI clinical records dataset
+│   └── heart_failure_clinical_records_dataset.csv   # UCI clinical records dataset
 ├── notebooks/
 │   └── eda.ipynb                   # Exploratory data analysis
 ├── src/
 │   ├── data_processing.py          # Loading, cleaning, SMOTE, memory optimisation
 │   ├── train_model.py              # Multi-model training & selection
-│   └── evaluate_model.py           # Metrics, ROC curve, SHAP summary
+│   └── evaluate_model.py           # All metrics, ROC curves, confusion matrices, SHAP
 ├── app/
 │   └── app.py                      # Streamlit physician interface
 ├── tests/
-│   └── test_data_processing.py     # Automated pytest tests
+│   └── test_data_processing.py     # 10 automated pytest tests
 ├── assets/
-│   ├── heart_logo.jpg              # Project logo (displayed in README header)
+│   ├── heart_logo.jpg              # Project logo
 │   └── output.gif                  # Application demo animation
-├── models/                         # Saved model + scaler (generated after training)
-├── reports/                        # Plots (generated after evaluation)
+├── reports/                        # Auto-generated after running evaluate_model.py
+│   ├── model_comparison.csv        # Full metrics table for all 4 models
+│   ├── smote_comparison.csv        # SMOTE impact on key metrics
+│   ├── confusion_matrix_*.png      # One confusion matrix per model
+│   ├── roc_curves_all_models.png   # Combined + individual ROC curves
+│   └── shap_summary_plot.png       # SHAP feature importance plot
 ├── .github/workflows/
 │   └── ci.yml                      # GitHub Actions CI pipeline
 ├── requirements.txt
@@ -87,30 +91,22 @@ heart-failure-project/
 
 ### `src/data_processing.py`
 
-This file is the **data foundation** of the entire pipeline. It handles everything from loading to preprocessing.
+The **data foundation** of the entire pipeline — handles loading, memory optimisation, and preprocessing.
 
 ```python
 def load_data(filepath):
-    """
-    Loads the dataset from either CSV or Excel format.
-    Automatically detects the file type from the extension.
-    Supports: .csv, .xls, .xlsx
-    """
-    if filepath.endswith('.csv'):
-        df = pd.read_csv(filepath)
-    elif filepath.endswith(('.xls', '.xlsx')):
-        df = pd.read_excel(filepath, engine='xlrd')
+    """Loads CSV dataset. Simple and reliable for CI/CD environments."""
+    df = pd.read_csv(filepath)
+    return df
 ```
-
-> 📌 **Why auto-detect?** The project uses `.xls` locally but `.csv` in CI/CD (GitHub Actions). This function makes the code work in both environments without modification.
 
 ```python
 def optimize_memory(df):
     """
-    Reduces memory footprint by converting:
-      float64 → float32  (saves 50% per float column)
-      int64   → int32    (saves 50% per int column)
-    Critical for scalability when dataset grows larger.
+    Reduces memory footprint by downcasting numeric types:
+      float64 → float32   (-50% per float column)
+      int64   → int32     (-50% per int column)
+    Result: 37.84 KB → 17.62 KB (53.4% reduction)
     """
     for col in df.columns:
         if df[col].dtype == 'float64':
@@ -119,18 +115,17 @@ def optimize_memory(df):
             df[col] = df[col].astype('int32')
 ```
 
-> 📌 **Result:** Memory reduced from 31.228 KB to 15.68 KB — a **49.8% reduction** with no loss of information.
-
 ```python
 def preprocess(df):
     """
     Full preprocessing pipeline:
-      1. Separates features (X) from target (y = DEATH_EVENT)
-      2. Splits into train (80%) / test (20%) with stratification
-      3. Applies SMOTE ONLY on training data — never on test data
-    
-    ⚠️ CRITICAL: SMOTE must be applied AFTER the split to avoid
-    data leakage (synthetic samples in test set = invalid evaluation).
+      1. Separate X (12 features) from y (DEATH_EVENT)
+      2. Stratified 80/20 train/test split
+      3. Apply SMOTE ONLY on training data ← prevents data leakage
+
+    ⚠️ CRITICAL: SMOTE must come AFTER the split.
+    If applied before, synthetic samples could appear in the test set,
+    making evaluation results artificially inflated.
     """
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
@@ -143,123 +138,101 @@ def preprocess(df):
 
 ### `src/train_model.py`
 
-This file trains all four required classifiers and returns the best one automatically.
-
-```python
-def get_data_path():
-    """
-    Resolves the dataset path dynamically.
-    Priority: .xls (local dev) → .csv (CI/CD fallback)
-    Raises FileNotFoundError if neither is found.
-    """
-```
+Trains all four classifiers and returns the best one based on ROC-AUC.
 
 ```python
 models = {
     'Random Forest':       RandomForestClassifier(random_state=42),
     'XGBoost':             XGBClassifier(random_state=42, eval_metric='logloss'),
-    'LightGBM':            LGBMClassifier(random_state=42, verbose=-1),
+    'LightGBM':            LGBMClassifier(random_state=42),
     'Logistic Regression': LogisticRegression(random_state=42, max_iter=1000)
 }
+# Best model selected automatically by comparing ROC-AUC on the test set
 ```
 
-> 📌 **Why these 4 models?** They cover the full spectrum: linear baseline (Logistic Regression), ensemble bagging (Random Forest), and two gradient boosting implementations (XGBoost, LightGBM) — allowing a fair comparison across model families.
-
-```python
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    y_proba = model.predict_proba(X_test)[:, 1]
-    auc = roc_auc_score(y_test, y_proba)
-    # Track the model with the highest AUC
-    if auc > best_score:
-        best_score = auc
-        best_model = model
-```
-
-> 📌 **Why ROC-AUC for selection?** AUC measures the model's ability to rank patients correctly regardless of classification threshold — more robust than accuracy for imbalanced datasets.
+> 📌 **Why ROC-AUC for selection?** AUC is threshold-independent and robust to class imbalance — more clinically meaningful than accuracy alone.
 
 ---
 
 ### `src/evaluate_model.py`
 
-Loads the best model and computes the full evaluation report.
+The most complete file in the project — evaluates **all 4 models** and generates the full visual report.
 
 ```python
-def evaluate_saved_model():
+def evaluate_all_models():
     """
-    Runs the best model on the held-out test set and reports:
-      - ROC-AUC  : overall discrimination ability
-      - Accuracy : overall correct predictions
-      - Precision: of predicted deaths, how many were real
-      - Recall   : of actual deaths, how many were caught  ← most critical clinically
-      - F1-Score : harmonic mean of precision and recall
+    1. SMOTE impact analysis    → reports/smote_comparison.csv
+    2. All model metrics        → reports/model_comparison.csv
+    3. Confusion matrix per model → reports/confusion_matrix_*.png
+    4. ROC curves (combined + individual) → reports/roc_curves_all_models.png
+    5. SHAP feature importance  → reports/shap_summary_plot.png
     """
-    y_pred  = model.predict(X_test)
-    y_proba = model.predict_proba(X_test)[:, 1]
 ```
 
-> ⚕️ **Clinical priority:** In a medical context, **Recall** is the most important metric. A missed death (false negative) is far more dangerous than a false alarm (false positive). This is why SMOTE — which significantly boosts recall — was the right choice.
+**SMOTE comparison** — computed by training XGBoost twice (with and without SMOTE) on the same test set:
+```python
+xgb_no_smote.fit(X_tr_raw, y_tr_raw)   # raw imbalanced training set
+xgb_smote.fit(X_train, y_train)        # SMOTE-balanced training set
+```
+
+**ROC curves** — uses `RocCurveDisplay.from_predictions()` to plot all models on a combined chart plus individual subplots:
+```python
+fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+# Top-left: all models overlaid
+# Bottom row + top-center: one plot per model
+```
+
+**SHAP** — uses `shap.Explainer` (model-agnostic) with mean absolute SHAP values plotted as a horizontal bar chart:
+```python
+explainer   = shap.Explainer(best_model.predict_proba, X_train)
+shap_values = explainer(X_test)
+vals        = shap_values[:, :, 1].values   # class 1 = deceased
+```
 
 ---
 
 ### `app/app.py`
 
-The **Streamlit physician interface** — the user-facing layer of the entire project.
+The **Streamlit physician interface** with real-time SHAP explanation per patient.
 
 ```python
 @st.cache_resource
 def load_model():
     """
-    Trains the model once on startup and caches it in memory.
-    @st.cache_resource ensures the model is NOT retrained on every
-    user interaction — critical for application performance.
+    Trains the model ONCE on startup and caches it.
+    Without @st.cache_resource, the model would retrain
+    on every button click (~30s per interaction).
     """
-    model, X_train, X_test, y_train, y_test = train_and_select_best_model()
-    return model, X_train, X_test, y_train, y_test
 ```
 
 ```python
-# SHAP waterfall plot for the individual patient
-explainer = shap.TreeExplainer(model)
-shap_values_obj = explainer(patient_data)
-
-# Handle both binary and multi-output SHAP formats
+# SHAP shape guard — critical for cross-environment compatibility
+# 3D output (n_samples, n_features, n_classes) → take class-1 slice
+# 2D output (n_samples, n_features)             → use directly
 if len(shap_values_obj.shape) == 3:
     shap.plots.waterfall(shap_values_obj[0, :, 1], show=False)
 else:
     shap.plots.waterfall(shap_values_obj[0], show=False)
 ```
 
-> 📌 **Why the shape check?** Different versions of SHAP and different tree models return SHAP values in different array shapes. This guard makes the code robust across environments.
-
 ---
 
 ### `tests/test_data_processing.py`
 
-10 automated tests that verify every critical component of the pipeline.
+10 automated tests covering every critical component:
 
-```python
-def test_preprocess_smote_balances_classes(df):
-    """
-    After SMOTE the two classes in y_train must be perfectly equal.
-    This test ensures the imbalance fix is actually working,
-    not just assumed to work.
-    """
-    X_train, X_test, y_train, y_test = preprocess(df)
-    counts = pd.Series(y_train).value_counts()
-    assert counts[0] == counts[1]
-```
-
-```python
-def test_optimize_memory_no_float64(df):
-    """
-    Verifies that NO float64 columns remain after optimization.
-    Without this test, a silent dtype regression could go unnoticed.
-    """
-    opt = optimize_memory(df.copy())
-    float64_cols = [c for c in opt.columns if opt[c].dtype == np.float64]
-    assert float64_cols == []
-```
+| Test | What it verifies |
+|---|---|
+| `test_no_missing_values` | Dataset has zero missing values |
+| `test_preprocess_handles_injected_nulls` | Pipeline handles NaN rows gracefully |
+| `test_optimize_memory_reduces_size` | Memory strictly decreases after optimisation |
+| `test_optimize_memory_preserves_shape` | Shape unchanged after optimisation |
+| `test_optimize_memory_no_float64` | No float64 columns remain |
+| `test_optimize_memory_no_int64` | No int64 columns remain |
+| `test_preprocess_returns_four_splits` | preprocess() returns exactly 4 objects |
+| `test_preprocess_correct_feature_count` | 12 features in train and test sets |
+| `test_preprocess_smote_balances_classes` | Classes perfectly balanced after SMOTE |
+| `test_model_returns_binary_predictions` | Model only outputs 0 or 1 |
 
 ---
 
@@ -267,37 +240,98 @@ def test_optimize_memory_no_float64(df):
 
 ```yaml
 on:
-  push:
-    branches: [ main, dev ]   # triggers on every push to main or dev
-  pull_request:
-    branches: [ main ]        # triggers on every pull request to main
+  push:    { branches: [main, dev] }   # runs on every push
+  pull_request: { branches: [main] }   # runs on every PR
 
-jobs:
-  test:
-    steps:
-      - pip install -r requirements.txt   # install all dependencies
-      - pytest tests/ -v --tb=short       # run all 10 tests automatically
+steps:
+  - actions/checkout@v4          # download the code
+  - actions/setup-python@v5      # install Python 3.11
+  - pip install -r requirements.txt
+  - pytest tests/ -v --tb=short  # run all 10 tests automatically
 ```
-
-> 📌 **Why CI/CD matters:** It guarantees that broken code can never silently reach the main branch. If a teammate pushes code that breaks a test, GitHub immediately flags it before it affects anyone else.
 
 ---
 
-## 🎬 Application Demo
+## 📊 Model Performance — Real Results
+
+All models evaluated on a stratified held-out test set (80/20 split) with SMOTE applied on training data.
+
+| Model | ROC-AUC | Accuracy | Precision | Recall | F1-Score |
+|---|---|---|---|---|---|
+| Logistic Regression | 0.8768 | 0.8167 | 0.7222 | 0.6842 | 0.7027 |
+| LightGBM | 0.8780 | 0.8167 | 0.7500 | 0.6316 | 0.6857 |
+| XGBoost | 0.8832 | 0.8333 | 0.8000 | 0.6316 | 0.7059 |
+| **Random Forest** ✅ | **0.8992** | **0.8333** | **0.8000** | **0.6316** | **0.7059** |
+
+> **Random Forest** is the best model with the highest ROC-AUC of **0.8992**. Its ensemble of decision trees provides robust generalisation on this small clinical dataset (299 patients), and its performance confirmed by the confusion matrices below.
+
+---
+
+## 🗂️ Confusion Matrices
 
 <div align="center">
-  <img src="assets/output.gif" alt="Heart Failure Risk Predictor Demo" width="700"/>
+  <img src="reports/confusion_matrix_random_forest.png" width="45%"/>
+  <img src="reports/confusion_matrix_xgboost.png" width="45%"/>
 </div>
 
-The demo above shows the full prediction workflow:
+<div align="center">
+  <img src="reports/confusion_matrix_lightgbm.png" width="45%"/>
+  <img src="reports/confusion_matrix_logistic_regression.png" width="45%"/>
+</div>
 
-| Step | Description |
-|---|---|
-| 1️⃣ Launch | Starting the Streamlit app locally |
-| 2️⃣ Input | Entering patient clinical data in the sidebar |
-| 3️⃣ Predict | Clicking **PREDICT RISK** and reading the HIGH / LOW result |
-| 4️⃣ SHAP | Interpreting the waterfall chart for the individual patient |
-| 5️⃣ Summary | Reading the patient data summary table |
+> Reading the matrices: **True Positives** (Died → predicted Died) are the most clinically critical — missing these is a false negative, the most dangerous error in a medical context.
+
+---
+
+## 📈 ROC Curves
+
+<div align="center">
+  <img src="reports/roc_curves_all_models.png" width="750"/>
+</div>
+
+---
+
+## 🔬 SHAP Explainability
+
+<div align="center">
+  <img src="reports/shap_summary_plot.png" width="700"/>
+</div>
+
+**Top features by global SHAP importance:**
+
+| Rank | Feature | Clinical Interpretation |
+|---|---|---|
+| 1 | `time` | Shorter follow-up period → higher risk |
+| 2 | `serum_creatinine` | Elevated creatinine → kidney stress → increased risk |
+| 3 | `ejection_fraction` | Lower ejection % → weaker heart pump → higher risk |
+| 4 | `age` | Older patients at greater risk |
+| 5 | `serum_sodium` | Low sodium (hyponatremia) → increased mortality risk |
+
+---
+
+## ⚖️ Handling Class Imbalance
+
+Dataset is **imbalanced**: ~68% survived (0), ~32% deceased (1). Strategy: **SMOTE** on training set only.
+
+**Measured impact on XGBoost (real results):**
+
+| Metric | Without SMOTE | With SMOTE | Improvement |
+|---|---|---|---|
+| Recall | 0.5263 | 0.6316 | **+10.5 pts** |
+| F1-Score | 0.6452 | 0.7059 | **+6.1 pts** |
+| ROC-AUC | 0.8318 | 0.8832 | **+5.1 pts** |
+
+> Recall improved by +10.5 points — meaning significantly fewer missed deaths after applying SMOTE. In a clinical setting this is the most important gain.
+
+---
+
+## 🧠 Memory Optimisation
+
+```
+Before optimisation : 37.84 KB
+After  optimisation : 17.62 KB
+Memory saved        : 20.22 KB  (53.4% reduction)
+```
 
 ---
 
@@ -313,10 +347,11 @@ pip install -r requirements.txt
 python src/train_model.py
 ```
 
-### 3. Evaluate & Generate SHAP Plots
+### 3. Evaluate All Models & Generate Reports
 ```bash
 python src/evaluate_model.py
 ```
+> Generates confusion matrices, ROC curves, SHAP plot, and CSV reports in `reports/`
 
 ### 4. Launch the Web Application
 ```bash
@@ -337,48 +372,19 @@ docker run -p 8501:8501 heart-failure-app
 
 ---
 
-## 📊 Model Performance
+## 🎬 Application Demo
 
-| Model | ROC-AUC | F1 (Deceased) | Precision | Recall | Accuracy |
-|---|---|---|---|---|---|
-| Logistic Regression | ~0.84 | ~0.76 | ~0.78 | ~0.74 | ~0.80 |
-| Random Forest | ~0.89 | ~0.82 | ~0.84 | ~0.80 | ~0.85 |
-| LightGBM | ~0.91 | ~0.84 | ~0.85 | ~0.83 | ~0.87 |
-| **XGBoost** ✅ | **~0.92** | **~0.85** | **~0.86** | **~0.84** | **~0.88** |
+<div align="center">
+  <img src="assets/output.gif" alt="Heart Failure Risk Predictor Demo" width="700"/>
+</div>
 
----
-
-## 🔬 SHAP Explainability
-
-| Rank | Feature | Clinical Interpretation |
-|---|---|---|
-| 1 | `time` | Shorter follow-up period → higher risk |
-| 2 | `serum_creatinine` | Elevated creatinine → kidney stress → increased risk |
-| 3 | `ejection_fraction` | Lower ejection % → weaker heart pump → higher risk |
-| 4 | `age` | Older patients at greater risk |
-| 5 | `serum_sodium` | Low sodium (hyponatremia) → increased mortality risk |
-
----
-
-## ⚖️ Handling Class Imbalance
-
-**Strategy: SMOTE** applied exclusively on the training set.
-
-| Metric | Without SMOTE | With SMOTE |
-|---|---|---|
-| Recall (Deceased) | ~0.65 | ~0.84 |
-| F1 (Deceased) | ~0.71 | ~0.85 |
-| ROC-AUC | ~0.88 | ~0.92 |
-
----
-
-## 🧠 Memory Optimisation
-
-```
-Before optimisation : 37.84 KB
-After  optimisation : 17.62 KB
-Memory saved        : 20.22 KB  (53.4% reduction)
-```
+| Step | Description |
+|---|---|
+| 1️⃣ Launch | Starting the Streamlit app locally |
+| 2️⃣ Input | Entering patient clinical data in the sidebar |
+| 3️⃣ Predict | Clicking **PREDICT RISK** and reading the HIGH / LOW result |
+| 4️⃣ SHAP | Interpreting the waterfall chart for the individual patient |
+| 5️⃣ Summary | Reading the patient data summary table |
 
 ---
 
@@ -390,44 +396,41 @@ Memory saved        : 20.22 KB  (53.4% reduction)
 ```
 I am building a binary classification model to predict heart failure death risk.
 My dataset has 299 patients, is imbalanced (68% survived / 32% deceased),
-and has 12 clinical features. I have trained these 4 models and obtained
-the following ROC-AUC scores:
-  - Logistic Regression : 0.84
-  - Random Forest       : 0.89
-  - LightGBM            : 0.91
-  - XGBoost             : 0.92
+and has 12 clinical features. I trained 4 models and obtained these ROC-AUC scores:
+  - Logistic Regression : 0.8768
+  - LightGBM            : 0.8780
+  - XGBoost             : 0.8832
+  - Random Forest       : 0.8992
 
 Given the medical context where false negatives (missed deaths) are dangerous,
 which model should I select as my final model and why?
-Justify your answer using clinical and technical criteria.
+Justify your answer using both clinical and technical criteria.
 ```
 
-**AI Response (summary):** The AI recommended **XGBoost** as the final model, justifying the choice on three grounds: (1) highest ROC-AUC indicating best overall discrimination, (2) best F1 on the minority class showing balanced precision/recall, and (3) the availability of `scale_pos_weight` as an additional imbalance correction layer on top of SMOTE. The AI also noted that in clinical settings, the cost asymmetry between false negatives and false positives makes maximising recall critical.
+**AI Response (summary):** The AI recommended **Random Forest** as the final model for three reasons: (1) highest ROC-AUC of 0.8992 — best overall discrimination ability, (2) strong F1 on the minority class showing balanced precision/recall, and (3) natural robustness to overfitting via bagging, important for small clinical datasets like this one (299 patients). The AI also emphasized that in medical contexts, maximising recall to catch all deceased patients is more important than minimising false alarms.
 
-**Effectiveness:** Highly effective — by providing the concrete scores AND the clinical context in the prompt, the AI was able to reason from both a statistical and medical perspective simultaneously. A prompt without the clinical context would have selected the model on AUC alone without addressing the false-negative risk.
-
-**Lesson learned:** Context is everything in prompt engineering. The same question with different context yields fundamentally different (and more useful) answers.
+**Lesson learned:** Including the actual metric scores AND the clinical context in the prompt led the AI to reason from both a statistical and medical perspective simultaneously. A prompt without numerical results would have given a generic theoretical answer instead of a data-driven recommendation.
 
 ---
 
 ## 📚 What We Learned This Coding Week
 
 ### 🤖 Machine Learning
-- Training and comparing multiple classifiers: Random Forest, XGBoost, LightGBM, Logistic Regression
+- Training and comparing 4 classifiers: Random Forest, XGBoost, LightGBM, Logistic Regression
 - Understanding evaluation metrics beyond accuracy: ROC-AUC, F1, Precision, Recall
-- Handling **class imbalance** with SMOTE and understanding the risk of data leakage
-- Model selection based on clinically relevant criteria — prioritising recall over accuracy
+- Handling **class imbalance** with SMOTE and measuring its real impact (+10.5 pts recall)
+- Model selection based on clinically relevant criteria
 
 ### 🔍 Explainable AI (XAI)
-- Discovering **SHAP** as a tool for model transparency in medical applications
-- Generating global summary plots and per-patient waterfall charts
+- Using **SHAP** for model transparency in medical applications
+- Generating global feature importance plots and per-patient waterfall charts
 - Understanding why explainability is non-negotiable in clinical AI
 
 ### 🛠️ Software Engineering
 - Structuring a Python ML project professionally (src/, tests/, app/, notebooks/)
 - Writing **clean, modular, documented code** with docstrings
 - Optimising memory usage through dtype downcasting
-- Writing **automated tests** with `pytest`
+- Writing **10 automated tests** with `pytest`
 
 ### 🌐 Web Development
 - Building an interactive clinical UI with **Streamlit**
@@ -436,33 +439,29 @@ Justify your answer using clinical and technical criteria.
 
 ### ⚙️ DevOps & CI/CD
 - Creating a **GitHub repository** with a professional branching strategy
-- Writing a **GitHub Actions** workflow for automated CI/CD
+- Writing a **GitHub Actions** workflow (updated to `actions/checkout@v4`)
 - Containerising the app with **Docker**
 
 ### 📋 Project Management
-- Organising and tracking tasks with **Jira** (To Do → In Progress → Review → Done)
-- Distributing responsibilities across team members
-- Collaborating on a shared GitHub repository with branches and pull requests
+- Organising tasks with **Jira** (To Do → In Progress → Review → Done)
+- Distributing responsibilities and collaborating on a shared GitHub repo
 
 ### 🤝 Prompt Engineering
 - Using AI assistants as coding and reasoning partners
-- Writing specific, context-rich prompts to get high-quality outputs
-- Understanding that vague prompts produce generic results
+- Writing specific, context-rich prompts with actual data for better results
 
 ---
 
 ## 🚧 Challenges & Problems Encountered
 
-This section honestly documents the real difficulties the team faced — and how we solved them.
-
 ### 📋 1. Task Management & Coordination
-At the start of the week, dividing work among 5 people on a single codebase was harder than expected. Two team members worked on the same file simultaneously and created conflicting versions. **Solution:** We adopted a strict GitHub branching strategy (one branch per feature/task) and used Jira to assign ownership clearly — no two people working on the same file at the same time.
+Two team members worked on the same file simultaneously and created conflicting versions. **Solution:** Strict GitHub branching (one branch per feature) and Jira task ownership — no two people on the same file.
 
 ### 💡 2. Changing Ideas Mid-Way
-The team initially planned to use a Flask interface, but midway through decided to switch to Streamlit for faster development. This required rewriting the entire `app.py` from scratch. **Lesson:** Deciding on the tech stack early and sticking to it saves significant time.
+The team initially planned to use Flask, then switched to Streamlit. This required rewriting `app.py` from scratch. **Lesson:** Decide on the tech stack early.
 
-### 🐛 3. Debugging & Silent Errors
-The most time-consuming bug was related to SHAP output shapes. The `shap_values` array returned different shapes depending on the model type and SHAP version — causing the waterfall plot to crash silently for some models. The fix required adding a shape check:
+### 🐛 3. SHAP Shape Bug
+The `shap_values` array returned different shapes depending on model type and SHAP version, crashing the waterfall plot silently. **Fix:**
 ```python
 if len(shap_values_obj.shape) == 3:
     shap.plots.waterfall(shap_values_obj[0, :, 1], show=False)
@@ -470,16 +469,17 @@ else:
     shap.plots.waterfall(shap_values_obj[0], show=False)
 ```
 
-### 📦 4. Missing Modules & Environment Issues
-Several `ModuleNotFoundError` errors appeared when running the project on different machines because the `requirements.txt` was incomplete. `xlrd`, `openpyxl`, and `joblib` were missing. **Fix:** We systematically ran the project on a clean environment and added every missing package. The final `requirements.txt` was validated on three different machines before submission.
+### 📦 4. Missing Modules
+Several `ModuleNotFoundError` errors appeared on different machines because `requirements.txt` was incomplete (`xlrd`, `openpyxl`, `joblib` were missing). **Fix:** Tested on a clean environment and added every missing package systematically.
 
-### 🤖 5. Correcting & Adapting AI-Generated Code
-AI tools (Claude, ChatGPT) were extremely helpful but never 100% ready to use. Key adaptations required:
-- The AI-generated `optimize_memory()` function did not handle binary columns (`int8` optimization) — we added that case manually
-- The AI-generated `train_model.py` hardcoded the path to `.xls` and failed in CI where only `.csv` was available — we rewrote `get_data_path()` to auto-detect both formats
-- The AI's initial SHAP integration assumed a single-output model — we added the shape guard for binary classification compatibility
+### 🤖 5. Correcting AI-Generated Code
+AI tools accelerated development but required manual correction:
+- `optimize_memory()` didn't handle binary columns initially — added `int8` case manually
+- `train_model.py` hardcoded `.xls` path — rewrote with auto-detection for CI compatibility
+- SHAP integration assumed single-output model — added shape guard for binary classification
+- `evaluate_model.py` initially only evaluated the best model — redesigned to evaluate all 4 models and generate full visual reports
 
-> 💡 **Key takeaway:** AI-generated code should always be treated as a **first draft** — it accelerates development significantly, but human review, testing, and adaptation are always necessary.
+> 💡 **Key takeaway:** AI code is always a first draft. Human review, testing, and adaptation are always necessary.
 
 ---
 
@@ -493,13 +493,9 @@ AI tools (Claude, ChatGPT) were extremely helpful but never 100% ready to use. K
 
 ## 👥 Team
 
-| Name 
-|---
-| Azizi Hajar 
-| Stitou Amal 
-| Tayyeb Idriss 
-| Zerzbane Khaoula 
-| Zhiri Ahmed 
+Azizi Hajar · Stitou Amal · Tayyeb Idriss · Zerzbane Khaoula · Zhiri Ahmed
+
+
 ## 🎓 Supervising Teachers
 
 Dr. Zerhouni Kawtar · Dr. Nassih Rym · Pr. Hermann Agossou · Pr. Kourouma Nouhan · Pr. Mehdi Soufiane
