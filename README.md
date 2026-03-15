@@ -52,7 +52,7 @@ This project is an advanced **clinical decision-support tool** that helps physic
 ```
 heart-failure-project/
 ├── data/
-│   └── heart_failure.csv           # UCI clinical records dataset
+│   └── heart_failure_clinical_records_dataset.csv        # UCI clinical records dataset
 ├── notebooks/
 │   └── eda.ipynb                   # Exploratory data analysis
 ├── src/
