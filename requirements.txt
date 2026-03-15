@@ -1,4 +1,4 @@
-git 
+
 pandas
 numpy
 scikit-learn
