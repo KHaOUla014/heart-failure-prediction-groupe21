@@ -12,7 +12,7 @@ from data_processing import load_data, optimize_memory, preprocess
 def train_and_select_best_model():
     # 1. Load and prepare the data
     print("Loading and optimizing data...")
-    df = load_data('data/heart_failure_clinical_records_dataset.xls')
+    df = load_data('data/heart_failure_clinical_records_dataset.csv')
     df = optimize_memory(df)
     
     print("\nPreprocessing data (Splitting and applying SMOTE)...")
